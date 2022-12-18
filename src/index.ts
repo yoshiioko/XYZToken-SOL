@@ -25,6 +25,26 @@ async function createNewMint(
   return tokenMint;
 }
 
+async function createTokenAccount(
+  connection: web3.Connection,
+  payer: web3.Keypair,
+  mint: web3.PublicKey,
+  owner: web3.PublicKey
+) {
+  const tokenAccount = await token.getOrCreateAssociatedTokenAccount(
+    connection,
+    payer,
+    mint,
+    owner
+  );
+
+  console.log(
+    `Token Account: https://explorer.solana.com/address/${tokenAccount.address}?cluster=devnet`
+  );
+
+  return tokenAccount;
+}
+
 async function main() {
   const connection = new web3.Connection(web3.clusterApiUrl("devnet"));
   const user = await initializeKeypair(connection);
