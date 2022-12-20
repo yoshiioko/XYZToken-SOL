@@ -124,8 +124,12 @@ async function burnTokens(
 async function main() {
   const connection = new web3.Connection(web3.clusterApiUrl("devnet"));
   const user = await initializeKeypair(connection);
+  const receiver = new web3.PublicKey(
+    "F2sA1ecwBErKt1Evs4ELQxYG7aGnxTi7g7ns9PCmVbRT"
+  );
 
-  console.log("PublicKey:", user.publicKey.toBase58());
+  console.log("User PublicKey:", user.publicKey.toBase58());
+  console.log("Receiver PublicKey:", receiver.toBase58());
 
   const mint = await createNewMint(
     connection,
@@ -142,7 +146,24 @@ async function main() {
     user.publicKey
   );
 
+  const receiverTokenAccount = await createTokenAccount(
+    connection,
+    user,
+    mint,
+    receiver
+  );
+
   await mintTokens(connection, user, mint, tokenAccount.address, user, 100);
+
+  await transferTokens(
+    connection,
+    user,
+    tokenAccount.address,
+    receiverTokenAccount.address,
+    user.publicKey,
+    50,
+    mint
+  );
 }
 
 main()
