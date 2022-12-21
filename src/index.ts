@@ -142,10 +142,10 @@ async function createTokenMetadata(
   description: string
 ) {
   // file to buffer
-  const buffer = fs.readFileSync("assets/bitcoin.png");
+  const buffer = fs.readFileSync("assets/nu.png");
 
   // buffer to metaplex file
-  const file = toMetaplexFile(buffer, "bitcoin.png");
+  const file = toMetaplexFile(buffer, "nu.png");
 
   // upload image and get image uri
   const imageUri = await metaplex.storage().upload(file);
@@ -208,45 +208,91 @@ async function createTokenMetadata(
 async function main() {
   const connection = new web3.Connection(web3.clusterApiUrl("devnet"));
   const user = await initializeKeypair(connection);
-  const receiver = new web3.PublicKey(
-    "F2sA1ecwBErKt1Evs4ELQxYG7aGnxTi7g7ns9PCmVbRT"
-  );
 
-  console.log("User PublicKey:", user.publicKey.toBase58());
-  console.log("Receiver PublicKey:", receiver.toBase58());
+  console.log("PublicKey:", user.publicKey.toBase58());
 
   const mint = await createNewMint(
     connection,
-    user,
-    user.publicKey,
-    user.publicKey,
-    2
+    user, // We'll pay the fees
+    user.publicKey, // We're the mint authority
+    user.publicKey, // And the freeze authority >:)
+    2 // Only two decimals!
   );
 
   const tokenAccount = await createTokenAccount(
     connection,
     user,
     mint,
+    user.publicKey // Associating our address with the token account
+  );
+
+  // Mint 100 tokens to our address
+  await mintTokens(connection, user, mint, tokenAccount.address, user, 100);
+}
+
+async function sendTokensToReceiver() {
+  const connection = new web3.Connection(web3.clusterApiUrl("devnet"));
+  const user = await initializeKeypair(connection);
+  const receiver = new web3.PublicKey(
+    "F2sA1ecwBErKt1Evs4ELQxYG7aGnxTi7g7ns9PCmVbRT"
+  );
+  const mint = new web3.PublicKey(
+    "FACh4y1vwtREx1t4LtM2htuJYYinHzCGK8SN6Mwi7J1M"
+  );
+
+  const senderAccount = await createTokenAccount(
+    connection,
+    user,
+    mint,
     user.publicKey
   );
 
-  const receiverTokenAccount = await createTokenAccount(
+  const receiverAccount = await createTokenAccount(
     connection,
     user,
     mint,
     receiver
   );
 
-  await mintTokens(connection, user, mint, tokenAccount.address, user, 100);
-
   await transferTokens(
     connection,
     user,
-    tokenAccount.address,
-    receiverTokenAccount.address,
+    senderAccount.address,
+    receiverAccount.address,
     user.publicKey,
-    50,
+    100,
     mint
+  );
+}
+
+async function setTokenMetadata() {
+  const connection = new web3.Connection(web3.clusterApiUrl("devnet"));
+  const user = await initializeKeypair(connection);
+
+  console.log("PublicKey:", user.publicKey.toBase58());
+
+  const MINT_ADDRESS = "FACh4y1vwtREx1t4LtM2htuJYYinHzCGK8SN6Mwi7J1M";
+
+  // metaplex setup
+  const metaplex = Metaplex.make(connection)
+    .use(keypairIdentity(user))
+    .use(
+      bundlrStorage({
+        address: "https://devnet.bundlr.network",
+        providerUrl: "https://api.devnet.solana.com",
+        timeout: 60000,
+      })
+    );
+
+  // Calling the token
+  await createTokenMetadata(
+    connection,
+    metaplex,
+    new web3.PublicKey(MINT_ADDRESS),
+    user,
+    "Nu Token",
+    "NUT",
+    "A test token created by Yoshiioko."
   );
 }
 
